@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WikiBot — Consultas con fuente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --accent: #c9a84c;
+    --accent2: #e8c87a;
+    --text: #e8e4dc;
+    --text2: #9a9590;
+    --text3: #5a5652;
+    --wiki: #3a7bbf;
+    --wiki-light: #6ba3d6;
+    --radius: 12px;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Subtle grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 760px;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    padding: 48px 0 32px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .tagline {
+    font-size: 14px;
+    color: var(--text2);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+
+  .wiki-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    background: rgba(58, 123, 191, 0.12);
+    border: 1px solid rgba(58, 123, 191, 0.3);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--wiki-light);
+    font-weight: 500;
+  }
+
+  .wiki-badge::before {
+    content: '◈';
+    font-size: 10px;
+  }
+
+  /* Chat area */
+  #chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-bottom: 20px;
+  }
+
+  .message {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user {
+    align-items: flex-end;
+  }
+
+  .message.bot {
+    align-items: flex-start;
+  }
+
+  .msg-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .msg-bubble {
+    max-width: 88%;
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .message.user .msg-bubble {
+    background: var(--accent);
+    color: #1a1200;
+    font-weight: 400;
+    border-radius: var(--radius) var(--radius) 4px var(--radius);
+  }
+
+  .message.bot .msg-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius) var(--radius) var(--radius) 4px;
+  }
+
+  .msg-bubble p { margin-bottom: 10px; }
+  .msg-bubble p:last-child { margin-bottom: 0; }
+
+  /* Source card */
+  .source-card {
+    max-width: 88%;
+    background: rgba(58, 123, 191, 0.07);
+    border: 1px solid rgba(58, 123, 191, 0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--wiki-light);
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+
+  .source-card:hover {
+    background: rgba(58, 123, 191, 0.14);
+  }
+
+  .source-card .src-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .source-card .src-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .source-card .src-title {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .source-card .src-url {
+    font-size: 11px;
+    color: var(--wiki-light);
+    opacity: 0.8;
+  }
+
+  /* Error */
+  .error-bubble {
+    background: rgba(180, 60, 60, 0.1);
+    border: 1px solid rgba(180, 60, 60, 0.3);
+    color: #e07070;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    max-width: 88%;
+  }
+
+  /* Typing indicator */
+  .typing {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius) var(--radius) var(--radius) 4px;
+    width: fit-content;
+  }
+
+  .typing span {
+    width: 7px;
+    height: 7px;
+    background: var(--text3);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* Welcome state */
+  .welcome {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text2);
+  }
+
+  .welcome-icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+  }
+
+  .welcome h2 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .welcome p {
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 400px;
+    margin: 0 auto 24px;
+  }
+
+  .example-questions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .example-q {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-size: 13px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .example-q:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Input area */
+  .input-area {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg) 70%, transparent);
+    padding: 16px 0 28px;
+    margin-top: auto;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 10px 10px 16px;
+    transition: border-color 0.2s;
+  }
+
+  .input-row:focus-within {
+    border-color: var(--accent);
+  }
+
+  #input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    resize: none;
+    min-height: 24px;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+
+  #input::placeholder { color: var(--text3); }
+
+  #send-btn {
+    width: 38px;
+    height: 38px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    color: #1a1200;
+  }
+
+  #send-btn:hover { background: var(--accent2); transform: scale(1.05); }
+  #send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  #send-btn svg { width: 16px; height: 16px; }
+
+  .input-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 8px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">📖</div>
+      <h1>WikiBot</h1>
+    </div>
+    <p class="tagline">Preguntas y respuestas con fuente verificada</p>
+    <div class="wiki-badge">Solo usa Wikipedia como fuente</div>
+  </header>
+
+  <div id="chat">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">🔍</div>
+      <h2>¿Sobre qué querés aprender hoy?</h2>
+      <p>Hacé cualquier pregunta. Busco la respuesta en Wikipedia y te cito exactamente de dónde viene.</p>
+      <div class="example-questions">
+        <button class="example-q" onclick="setExample(this)">¿Qué es la fotosíntesis?</button>
+        <button class="example-q" onclick="setExample(this)">¿Quién fue Ada Lovelace?</button>
+        <button class="example-q" onclick="setExample(this)">¿Cómo funciona un agujero negro?</button>
+        <button class="example-q" onclick="setExample(this)">¿Qué es la Revolución Francesa?</button>
+        <button class="example-q" onclick="setExample(this)">¿Qué es el ADN?</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-row">
+      <textarea id="input" placeholder="Escribí tu pregunta..." rows="1"></textarea>
+      <button id="send-btn" onclick="sendMessage()" title="Enviar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </button>
+    </div>
+    <p class="input-hint">Las respuestas provienen exclusivamente de Wikipedia</p>
+  </div>
+</div>
+
+<script>
+const GEMINI_API_KEY = 'AIzaSyBdHsm9dDQ12v4Y-QJ6_QAo3yBN38oIbvk';
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send-btn');
+
+// Auto-resize textarea
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+function setExample(btn) {
+  input.value = btn.textContent;
+  input.dispatchEvent(new Event('input'));
+  sendMessage();
+}
+
+function removeWelcome() {
+  const w = document.getElementById('welcome');
+  if (w) w.remove();
+}
+
+function addMessage(role, content) {
+  removeWelcome();
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+
+  const label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = role === 'user' ? 'Vos' : 'WikiBot';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+
+  if (typeof content === 'string') {
+    bubble.innerHTML = content.split('\n').filter(l => l.trim()).map(l => `<p>${l}</p>`).join('');
+  } else {
+    bubble.appendChild(content);
+  }
+
+  div.appendChild(label);
+  div.appendChild(bubble);
+  chat.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return bubble;
+}
+
+function addSourceCard(title, lang) {
+  const slug = title.replace(/ /g, '_');
+  const url = `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(slug)}`;
+
+  const div = document.createElement('div');
+  div.className = 'message bot';
+
+  const a = document.createElement('a');
+  a.className = 'source-card';
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.innerHTML = `
+    <span class="src-icon">📄</span>
+    <div class="src-info">
+      <span class="src-title">Wikipedia — ${title}</span>
+      <span class="src-url">${url}</span>
+    </div>
+  `;
+
+  div.appendChild(a);
+  chat.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function addTyping() {
+  removeWelcome();
+  const div = document.createElement('div');
+  div.className = 'message bot';
+  div.id = 'typing';
+
+  const label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = 'WikiBot';
+
+  const typing = document.createElement('div');
+  typing.className = 'typing';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+
+  div.appendChild(label);
+  div.appendChild(typing);
+  chat.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing');
+  if (t) t.remove();
+}
+
+function addError(msg) {
+  removeTyping();
+  const div = document.createElement('div');
+  div.className = 'message bot';
+
+  const label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = 'WikiBot';
+
+  const err = document.createElement('div');
+  err.className = 'error-bubble';
+  err.textContent = msg;
+
+  div.appendChild(label);
+  div.appendChild(err);
+  chat.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+// Detect language of question
+function detectLang(text) {
+  const spanishWords = /\b(qué|cómo|cuál|cuándo|dónde|quién|por qué|es|fue|son|era|tiene|hay|una|para|sobre|del|las|los)\b/i;
+  return spanishWords.test(text) ? 'es' : 'en';
+}
+
+// Search Wikipedia
+async function searchWikipedia(query, lang) {
+  const searchUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=3`;
+  const searchRes = await fetch(searchUrl);
+  const searchData = await searchRes.json();
+
+  if (!searchData.query.search.length) return null;
+
+  const title = searchData.query.search[0].title;
+  const summaryUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+  const summaryRes = await fetch(summaryUrl);
+  const summaryData = await summaryRes.json();
+
+  // Also try to get a bit more content
+  const contentUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=extracts&exintro=true&exchars=2000&format=json&origin=*`;
+  const contentRes = await fetch(contentUrl);
+  const contentData = await contentRes.json();
+  const pages = contentData.query.pages;
+  const pageId = Object.keys(pages)[0];
+  const extract = pages[pageId].extract || summaryData.extract || '';
+
+  // Clean HTML tags
+  const cleanExtract = extract.replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim();
+
+  return {
+    title,
+    extract: cleanExtract.slice(0, 2500),
+    lang
+  };
+}
+
+// Ask Gemini
+async function askGemini(question, wikiData) {
+  const lang = wikiData.lang;
+  const isSpanish = lang === 'es';
+
+  const systemPrompt = isSpanish
+    ? `Sos un asistente que responde EXCLUSIVAMENTE basándose en el texto de Wikipedia que se te proporciona. 
+REGLAS ESTRICTAS:
+1. Solo podés usar información del texto de Wikipedia provisto. Nunca agregues información propia.
+2. Si la información no está en el texto, decí claramente "No encontré esa información en el artículo de Wikipedia sobre este tema."
+3. Respondé siempre en español, de forma clara y accesible.
+4. No inventes datos, fechas, ni nombres que no estén en el texto.
+5. Podés reformular y explicar el contenido, pero sin agregar nada externo.`
+    : `You are an assistant that responds EXCLUSIVELY based on the Wikipedia text provided.
+STRICT RULES:
+1. Only use information from the provided Wikipedia text. Never add your own knowledge.
+2. If the information is not in the text, clearly say "I couldn't find that information in the Wikipedia article on this topic."
+3. Always respond in English, clearly and accessibly.
+4. Do not invent data, dates, or names not in the text.
+5. You may rephrase and explain the content, but add nothing external.`;
+
+  const userPrompt = isSpanish
+    ? `Texto de Wikipedia sobre "${wikiData.title}":\n\n${wikiData.extract}\n\n---\nPregunta del usuario: ${question}\n\nRespondé usando SOLO la información del texto de Wikipedia de arriba.`
+    : `Wikipedia text about "${wikiData.title}":\n\n${wikiData.extract}\n\n---\nUser question: ${question}\n\nAnswer using ONLY the information from the Wikipedia text above.`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: userPrompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 800 }
+      })
+    }
+  );
+
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No pude generar una respuesta.';
+}
+
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text || sendBtn.disabled) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  addMessage('user', text);
+  addTyping();
+
+  try {
+    const lang = detectLang(text);
+    const wikiData = await searchWikipedia(text, lang);
+
+    if (!wikiData) {
+      const noResult = lang === 'es'
+        ? 'No encontré un artículo relevante en Wikipedia para tu pregunta. Probá reformularla o buscá un término más específico.'
+        : 'I couldn\'t find a relevant Wikipedia article for your question. Try rephrasing or using a more specific term.';
+      addError(noResult);
+      return;
+    }
+
+    const answer = await askGemini(text, wikiData);
+    removeTyping();
+    addMessage('bot', answer);
+    addSourceCard(wikiData.title, wikiData.lang);
+
+  } catch (err) {
+    addError('Hubo un error al procesar tu pregunta. Revisá tu conexión e intentá de nuevo.');
+    console.error(err);
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+</script>
+</body>
+</html>
