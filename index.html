@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WikiBot — Consultas con fuente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --accent: #c9a84c;
+    --accent2: #e8c87a;
+    --text: #e8e4dc;
+    --text2: #9a9590;
+    --text3: #5a5652;
+    --wiki: #3a7bbf;
+    --wiki-light: #6ba3d6;
+    --radius: 12px;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Subtle grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 760px;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    padding: 48px 0 32px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .tagline {
+    font-size: 14px;
+    color: var(--text2);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+
+  .wiki-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    background: rgba(58, 123, 191, 0.12);
+    border: 1px solid rgba(58, 123, 191, 0.3);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--wiki-light);
+    font-weight: 500;
+  }
+
+  .wiki-badge::before {
+    content: '◈';
+    font-size: 10px;
+  }
+
+  /* Chat area */
+  #chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-bottom: 20px;
+  }
+
+  .message {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user {
+    align-items: flex-end;
+  }
+
+  .message.bot {
+    align-items: flex-start;
+  }
+
+  .msg-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .msg-bubble {
+    max-width: 88%;
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .message.user .msg-bubble {
+    background: var(--accent);
+    color: #1a1200;
+    font-weight: 400;
+    border-radius: var(--radius) var(--radius) 4px var(--radius);
+  }
+
+  .message.bot .msg-bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius) var(--radius) var(--radius) 4px;
+  }
+
+  .msg-bubble p { margin-bottom: 10px; }
+  .msg-bubble p:last-child { margin-bottom: 0; }
+
+  /* Source card */
+  .source-card {
+    max-width: 88%;
+    background: rgba(58, 123, 191, 0.07);
+    border: 1px solid rgba(58, 123, 191, 0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--wiki-light);
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+
+  .source-card:hover {
+    background: rgba(58, 123, 191, 0.14);
+  }
+
+  .source-card .src-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .source-card .src-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .source-card .src-title {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .source-card .src-url {
+    font-size: 11px;
+    color: var(--wiki-light);
+    opacity: 0.8;
+  }
+
+  .source-card .src-date {
+    font-size: 11px;
+    color: var(--accent);
+    opacity: 0.9;
+    margin-top: 2px;
+  }
+
+  /* References panel */
+  .refs-wrapper {
+    max-width: 88%;
+    margin-top: 4px;
+  }
+
+  .refs-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.2s;
+  }
+
+  .refs-toggle:hover {
+    border-color: var(--wiki-light);
+    color: var(--wiki-light);
+  }
+
+  .refs-toggle .arrow {
+    transition: transform 0.2s;
+    font-size: 10px;
+  }
+
+  .refs-toggle.open .arrow {
+    transform: rotate(180deg);
+  }
+
+  .refs-list {
+    display: none;
+    margin-top: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .refs-list.open {
+    display: block;
+    animation: fadeUp 0.2s ease;
+  }
+
+  .refs-list ol {
+    padding-left: 18px;
+    margin: 0;
+  }
+
+  .refs-list li {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 6px;
+    word-break: break-word;
+  }
+
+  .refs-list li a {
+    color: var(--wiki-light);
+    text-decoration: none;
+  }
+
+  .refs-list li a:hover { text-decoration: underline; }
+
+  .refs-list .no-refs {
+    font-size: 12px;
+    color: var(--text3);
+    font-style: italic;
+  }
+
+  /* Error */
+  .error-bubble {
+    background: rgba(180, 60, 60, 0.1);
+    border: 1px solid rgba(180, 60, 60, 0.3);
+    color: #e07070;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    max-width: 88%;
+  }
+
+  /* Typing indicator */
+  .typing {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius) var(--radius) var(--radius) 4px;
+    width: fit-content;
+  }
+
+  .typing span {
+    width: 7px;
+    height: 7px;
+    background: var(--text3);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* Welcome state */
+  .welcome {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text2);
+  }
+
+  .welcome-icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+  }
+
+  .welcome h2 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .welcome p {
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 400px;
+    margin: 0 auto 24px;
+  }
+
+  .example-questions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .example-q {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-size: 13px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .example-q:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Input area */
+  .input-area {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg) 70%, transparent);
+    padding: 16px 0 28px;
+    margin-top: auto;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 10px 10px 16px;
+    transition: border-color 0.2s;
+  }
+
+  .input-row:focus-within {
+    border-color: var(--accent);
+  }
+
+  #input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    resize: none;
+    min-height: 24px;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+
+  #input::placeholder { color: var(--text3); }
+
+  #send-btn {
+    width: 38px;
+    height: 38px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    color: #1a1200;
+  }
+
+  #send-btn:hover { background: var(--accent2); transform: scale(1.05); }
+  #send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  #send-btn svg { width: 16px; height: 16px; }
+
+  .input-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 8px;
+  }
+
+  /* Disclaimer banner */
+  .disclaimer-banner {
+    background: rgba(201, 168, 76, 0.08);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .disclaimer-banner strong {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .disclaimer-inline {
+    max-width: 88%;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.5;
+    padding: 6px 10px;
+    border-left: 2px solid rgba(201, 168, 76, 0.3);
+  }
+
+  /* Comparison table */
+  .compare-table {
+    max-width: 88%;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 8px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .compare-table th {
+    background: rgba(201,168,76,0.12);
+    color: var(--accent);
+    font-weight: 500;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-table td {
+    padding: 7px 12px;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">📖</div>
+      <h1>WikiBot</h1>
+    </div>
+    <p class="tagline">Preguntas y respuestas con fuente verificada</p>
+    <div class="wiki-badge">Solo usa Wikipedia como fuente</div>
+    <div class="disclaimer-banner" style="margin-top:12px;">
+      <strong>Aviso importante:</strong> Las respuestas son un recorte procesado por IA basado en Wikipedia. Pueden ser incompletas o imprecisas. Se recomienda visitar el artículo original para comprender el tema en su contexto completo.
+    </div>
+  </header>
+
+  <div id="chat">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">🔍</div>
+      <h2>¿Sobre qué querés aprender hoy?</h2>
+      <p>Hacé cualquier pregunta. Busco la respuesta en Wikipedia y te cito exactamente de dónde viene.</p>
+      <div class="example-questions">
+        <button class="example-q" onclick="setExample(this)">¿Qué es la fotosíntesis?</button>
+        <button class="example-q" onclick="setExample(this)">¿Quién fue Ada Lovelace?</button>onthis)">¿Cómo funciona un agujero negro?</button>
+        <button class="example-q" onclick="setExample(this)">¿Qué es la Revolución Francesa?</button>
+        <button class="example-q" onclick="setExample(this)">¿Qué es el ADN?</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-row">
+      <textarea id="input" placeholder="Escribí tu pregunta..." rows="1"></textarea>
+      <button id="send-btn" onclick="sendMessage()" title="Enviar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </button>
+    </div>
+    <p class="input-hint">Las respuestas provienen exclusivamente de Wikipedia</p>
+  </div>
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send-btn');
+const conversationHistory = [];
+
+input.addEventListener('input', function() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+input.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+function setExample(btn) {
+  input.value = btn.textContent;
+  input.dispatchEvent(new Event('input'));
+  sendMessage();
+}
+function removeWelcome() {
+  var w = document.getElementById('welcome');
+  if (w) w.remove();
+}
+function scrollEnd() {
+  chat.lastElementChild && chat.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+function detectLang(text) {
+  return /\b(qu\u00e9|c\u00f3mo|cu\u00e1l|cu\u00e1ndo|d\u00f3nde|qui\u00e9n|por qu\u00e9|es|fue|son|era|tiene|hay|una|para|sobre|del|las|los)\b/i.test(text) ? 'es' : 'en';
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function addMessage(role, text) {
+  removeWelcome();
+  var div = document.createElement('div');
+  div.className = 'message ' + role;
+  var label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = role === 'user' ? 'Vos' : 'WikiBot';
+  var bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = text.split('\n').filter(function(l) { return l.trim(); }).map(function(l) { return '<p>' + l + '</p>'; }).join('');
+  div.appendChild(label);
+  div.appendChild(bubble);
+  chat.appendChild(div);
+  scrollEnd();
+}
+
+function addTyping() {
+  removeWelcome();
+  var div = document.createElement('div');
+  div.className = 'message bot';
+  div.id = 'typing';
+  var label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = 'WikiBot';
+  var t = document.createElement('div');
+  t.className = 'typing';
+  t.innerHTML = '<span></span><span></span><span></span>';
+  div.appendChild(label);
+  div.appendChild(t);
+  chat.appendChild(div);
+  scrollEnd();
+}
+function removeTyping() {
+  var t = document.getElementById('typing');
+  if (t) t.remove();
+}
+
+function addError(msg) {
+  removeTyping();
+  var div = document.createElement('div');
+  div.className = 'message bot';
+  var label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = 'WikiBot';
+  var err = document.createElement('div');
+  err.className = 'error-bubble';
+  err.textContent = msg;
+  div.appendChild(label);
+  div.appendChild(err);
+  chat.appendChild(div);
+  scrollEnd();
+}
+
+function addCopyButton(answerText, lang) {
+  var wrapper = document.createElement('div');
+  wrapper.style.cssText = 'max-width:88%;margin-top:-4px;';
+  var btn = document.createElement('button');
+  btn.className = 'refs-toggle';
+  var lbl = lang === 'es' ? 'Copiar respuesta' : 'Copy response';
+  var done = lang === 'es' ? 'Copiado!' : 'Copied!';
+  btn.innerHTML = '<span>' + lbl + '</span>';
+  btn.onclick = function() {
+    navigator.clipboard.writeText(answerText).then(function() {
+      btn.innerHTML = '<span>' + done + '</span>';
+      setTimeout(function() { btn.innerHTML = '<span>' + lbl + '</span>'; }, 2000);
+    });
+  };
+  wrapper.appendChild(btn);
+  chat.appendChild(wrapper);
+}
+
+function addNewChatButton(lang) {
+  var existing = document.getElementById('new-chat-btn');
+  if (existing) existing.remove();
+  var wrapper = document.createElement('div');
+  wrapper.id = 'new-chat-btn';
+  wrapper.style.cssText = 'text-align:center;padding:8px 0;';
+  var btn = document.createElement('button');
+  btn.className = 'refs-toggle';
+  btn.style.cssText = 'border-color:var(--accent);color:var(--accent);';
+  btn.textContent = lang === 'es' ? 'Nueva consulta' : 'New query';
+  btn.onclick = function() {
+    chat.innerHTML = '';
+    conversationHistory.length = 0;
+    var welcome = document.createElement('div');
+    welcome.className = 'welcome';
+    welcome.id = 'welcome';
+    welcome.innerHTML = '<div class="welcome-icon">?</div><h2>\u00bfSobre qu\u00e9 quer\u00e9s aprender hoy?</h2><p>Hac\u00e9 cualquier pregunta.</p><div class="example-questions"><button class="example-q" onclick="setExample(this)">\u00bfQu\u00e9 es la fotos\u00edntesis?</button><button class="example-q" onclick="setExample(this)">\u00bfQui\u00e9n fue Ada Lovelace?</button><button class="example-q" onclick="setExample(this)">\u00bfC\u00f3mo funciona un agujero negro?</button><button class="example-q" onclick="setExample(this)">\u00bfQu\u00e9 es la Revoluci\u00f3n Francesa?</button><button class="example-q" onclick="setExample(this)">\u00bfQu\u00e9 es el ADN?</button></div>';
+    chat.appendChild(welcome);
+    wrapper.remove();
+    input.focus();
+  };
+  wrapper.appendChild(btn);
+  chat.appendChild(wrapper);
+}
+
+function addArticleStats(articles, lang) {
+  var total = articles.reduce(function(s, a) { return s + (a.extract ? a.extract.length : 0); }, 0);
+  var div = document.createElement('div');
+  div.style.cssText = 'max-width:88%;font-size:11px;color:var(--text3);padding:4px 2px;';
+  div.textContent = articles.length + ' ' + (lang === 'es' ? 'art\u00edculo' + (articles.length > 1 ? 's' : '') + ' consultado' + (articles.length > 1 ? 's' : '') : 'article' + (articles.length > 1 ? 's' : '') + ' consulted') + ' - ' + Math.round(total / 1000) + 'k chars';
+  chat.appendChild(div);
+}
+
+function addSourceCard(article, filteredRefs, lang) {
+  var slug = article.title.replace(/ /g, '_');
+  var url = 'https://' + lang + '.wikipedia.org/wiki/' + encodeURIComponent(slug);
+  var isSpanish = lang === 'es';
+  var div = document.createElement('div');
+  div.className = 'message bot';
+
+  var a = document.createElement('a');
+  a.className = 'source-card';
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  var dateLabel = article.lastModified ? (isSpanish ? '\u00daltima modificaci\u00f3n: ' : 'Last modified: ') + article.lastModified : '';
+  a.innerHTML = '<span class="src-icon">\ud83d\udcc4</span><div class="src-info"><span class="src-title">Wikipedia \u2014 ' + article.title + '</span><span class="src-url">' + url + '</span>' + (dateLabel ? '<span class="src-date">\u26a0\ufe0f ' + dateLabel + '</span>' : '') + '</div>';
+  div.appendChild(a);
+
+  // Excerpt toggle
+  if (article.extract) {
+    var excWrap = document.createElement('div');
+    excWrap.className = 'refs-wrapper';
+    var excBtn = document.createElement('button');
+    excBtn.className = 'refs-toggle';
+    excBtn.innerHTML = '<span>' + (isSpanish ? 'Ver fragmento usado' : 'View excerpt used') + '</span><span class="arrow">\u25bc</span>';
+    var excList = document.createElement('div');
+    excList.className = 'refs-list';
+    var excP = document.createElement('p');
+    excP.style.cssText = 'font-size:12px;color:var(--text2);line-height:1.7;white-space:pre-wrap;';
+    excP.textContent = article.extract.slice(0, 1200) + (article.extract.length > 1200 ? '...' : '');
+    excList.appendChild(excP);
+    excBtn.addEventListener('click', function() { excBtn.classList.toggle('open'); excList.classList.toggle('open'); });
+    excWrap.appendChild(excBtn);
+    excWrap.appendChild(excList);
+    div.appendChild(excWrap);
+  }
+
+  // References toggle
+  var refsWrap = document.createElement('div');
+  refsWrap.className = 'refs-wrapper';
+  var refsBtn = document.createElement('button');
+  refsBtn.className = 'refs-toggle';
+  refsBtn.innerHTML = '<span>' + (isSpanish ? 'Ver referencias del art\u00edculo' : 'View article references') + '</span><span class="arrow">\u25bc</span>';
+  var refsList = document.createElement('div');
+  refsList.className = 'refs-list';
+  if (filteredRefs && filteredRefs.length > 0) {
+    var ol = document.createElement('ol');
+    filteredRefs.forEach(function(r) {
+      var li = document.createElement('li');
+      if (r.url) {
+        li.innerHTML = (r.text ? r.text + ' \u2014 ' : '') + '<a href="' + r.url + '" target="_blank" rel="noopener noreferrer">' + r.url + '</a>';
+      } else { li.textContent = r.text || ''; }
+      ol.appendChild(li);
+    });
+    refsList.appendChild(ol);
+    var fullLink = document.createElement('p');
+    fullLink.style.cssText = 'margin-top:10px;font-size:11px;';
+    fullLink.innerHTML = '<a href="' + url + '#Referencias" target="_blank" rel="noopener noreferrer" style="color:var(--wiki-light)">\u2192 ' + (isSpanish ? 'Ver todas en Wikipedia' : 'View all on Wikipedia') + '</a>';
+    refsList.appendChild(fullLink);
+  } else {
+    var none = document.createElement('p');
+    none.className = 'no-refs';
+    none.textContent = isSpanish ? 'No se encontraron referencias relevantes.' : 'No relevant references found.';
+    refsList.appendChild(none);
+  }
+  refsBtn.addEventListener('click', function() { refsBtn.classList.toggle('open'); refsList.classList.toggle('open'); });
+  refsWrap.appendChild(refsBtn);
+  refsWrap.appendChild(refsList);
+  div.appendChild(refsWrap);
+
+  var disc = document.createElement('div');
+  disc.className = 'disclaimer-inline';
+  disc.textContent = isSpanish ? 'Recorte procesado por IA. Visit\u00e1 el art\u00edculo completo para el contexto completo.' : 'AI-processed excerpt. Visit the full article for complete context.';
+  div.appendChild(disc);
+
+  chat.appendChild(div);
+  scrollEnd();
+}
+
+function renderComparisonTable(compData, lang) {
+  var isSpanish = lang === 'es';
+  var wrapper = document.createElement('div');
+  wrapper.className = 'message bot';
+  var label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = 'WikiBot';
+  wrapper.appendChild(label);
+
+  var table = document.createElement('table');
+  table.className = 'compare-table';
+  var thead = document.createElement('thead');
+  var hrow = document.createElement('tr');
+  var th0 = document.createElement('th');
+  th0.textContent = isSpanish ? 'Aspecto' : 'Aspect';
+  hrow.appendChild(th0);
+  (compData.subjects || []).forEach(function(s) {
+    var th = document.createElement('th');
+    th.textContent = s;
+    hrow.appendChild(th);
+  });
+  thead.appendChild(hrow);
+  table.appendChild(thead);
+
+  var tbody = document.createElement('tbody');
+  (compData.rows || []).forEach(function(row) {
+    var tr = document.createElement('tr');
+    var tdA = document.createElement('td');
+    tdA.style.cssText = 'font-weight:500;color:var(--text);';
+    tdA.textContent = row.aspect;
+    tr.appendChild(tdA);
+    (row.values || []).forEach(function(v) {
+      var td = document.createElement('td');
+      td.textContent = v;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  wrapper.appendChild(table);
+
+  if (compData.summary) {
+    var sumP = document.createElement('p');
+    sumP.style.cssText = 'max-width:88%;font-size:13px;color:var(--text2);margin-top:8px;line-height:1.6;';
+    sumP.textContent = compData.summary;
+    wrapper.appendChild(sumP);
+  }
+  chat.appendChild(wrapper);
+  scrollEnd();
+}
+
+function addDisambiguation(title, options, lang) {
+  removeTyping();
+  var div = document.createElement('div');
+  div.className = 'message bot';
+  var label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = 'WikiBot';
+  var bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  var intro = lang === 'es' ? '"' + title + '" puede referirse a varias cosas. \u00bfA cu\u00e1l te refer\u00eds?' : '"' + title + '" may refer to several things. Which one did you mean?';
+  bubble.innerHTML = '<p>' + intro + '</p>';
+  var btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;';
+  options.forEach(function(opt) {
+    var btn = document.createElement('button');
+    btn.className = 'example-q';
+    btn.textContent = opt.title;
+    btn.onclick = function() { div.remove(); handleArticleChoice(opt.title, lang); };
+    btns.appendChild(btn);
+  });
+  bubble.appendChild(btns);
+  div.appendChild(label);
+  div.appendChild(bubble);
+  chat.appendChild(div);
+  scrollEnd();
+}
+
+// ── Wikipedia API ─────────────────────────────────────────────────────────────
+async function fetchInfobox(title, lang) {
+  try {
+    var res = await fetch('https://' + lang + '.wikipedia.org/w/api.php?action=parse&page=' + encodeURIComponent(title) + '&prop=text&format=json&origin=*&section=0');
+    var data = await res.json();
+    var html = (data.parse && data.parse.text && data.parse.text['*']) || '';
+    if (!html) return '';
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    var infobox = doc.querySelector('table.infobox, table.biography, table.vcard, .infobox');
+    if (!infobox) return '';
+    var pairs = [];
+    infobox.querySelectorAll('tr').forEach(function(row) {
+      var h = row.querySelector('th');
+      var c = row.querySelector('td');
+      if (h && c) {
+        var k = h.textContent.replace(/\s+/g, ' ').trim();
+        var v = c.textContent.replace(/\s+/g, ' ').trim();
+        if (k && v && k.length < 60 && v.length < 300) pairs.push(k + ': ' + v);
+      }
+    });
+    return pairs.length ? '=== DATOS DE LA FICHA ===\n' + pairs.join('\n') + '\n=== FIN FICHA ===\n\n' : '';
+  } catch(e) { return ''; }
+}
+
+async function fetchWikiContent(title, lang) {
+  var url = 'https://' + lang + '.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(title) + '&prop=extracts|revisions&exintro=false&rvprop=timestamp&format=json&origin=*';
+  var res = await fetch(url);
+  var data = await res.json();
+  var pages = data.query.pages;
+  var pageId = Object.keys(pages)[0];
+  if (pageId === '-1') return null;
+  var page = pages[pageId];
+  var extract = (page.extract || '').replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  var timestamp = page.revisions && page.revisions[0] && page.revisions[0].timestamp;
+  var lastModified = null;
+  if (timestamp) {
+    var d = new Date(timestamp);
+    lastModified = d.toLocaleDateString(lang === 'es' ? 'es-AR' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  var infobox = await fetchInfobox(title, lang);
+  return { extract: (infobox + extract).slice(0, 20000), lastModified: lastModified };
+}
+
+async function fetchWikiReferences(title, lang) {
+  try {
+    var res = await fetch('https://' + lang + '.wikipedia.org/w/api.php?action=parse&page=' + encodeURIComponent(title) + '&prop=text&format=json&origin=*');
+    var data = await res.json();
+    var html = (data.parse && data.parse.text && data.parse.text['*']) || '';
+    if (!html) return [];
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    var items = doc.querySelectorAll('ol.references li, .mw-references-wrap li, .references-small li, div.reflist li, ol[class*="reference"] li');
+    var refs = [];
+    items.forEach(function(li) {
+      if (refs.length >= 40) return;
+      var clone = li.cloneNode(true);
+      clone.querySelectorAll('.mw-cite-backlink, .cite-accessibility-label, sup').forEach(function(el) { el.remove(); });
+      var links = Array.from(clone.querySelectorAll('a[href]')).map(function(a) { return a.getAttribute('href'); }).filter(function(h) { return h && (h.startsWith('http') || h.startsWith('//')) && !h.includes('wikipedia.org'); });
+      var text = clone.textContent.replace(/\s+/g, ' ').trim();
+      if (text.length > 5) {
+        var refUrl = links[0] ? (links[0].startsWith('//') ? 'https:' + links[0] : links[0]) : null;
+        refs.push({ url: refUrl, text: text.slice(0, 250) });
+      }
+    });
+    return refs;
+  } catch(e) { return []; }
+}
+
+async function isDisambiguation(title, lang) {
+  try {
+    var res = await fetch('https://' + lang + '.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(title) + '&prop=categories|pageprops&format=json&origin=*');
+    var data = await res.json();
+    var pages = data.query.pages;
+    var page = pages[Object.keys(pages)[0]];
+    var cats = (page.categories || []).map(function(c) { return c.title.toLowerCase(); });
+    if (cats.some(function(c) { return c.includes('desambiguaci') || c.includes('disambiguation'); })) return true;
+    if ((page.pageprops || {}).disambiguation !== undefined) return true;
+    return false;
+  } catch(e) { return false; }
+}
+
+async function getDisambiguationOptions(title, lang) {
+  try {
+    var res = await fetch('https://' + lang + '.wikipedia.org/w/api.php?action=parse&page=' + encodeURIComponent(title) + '&prop=text&format=json&origin=*');
+    var data = await res.json();
+    var html = (data.parse && data.parse.text && data.parse.text['*']) || '';
+    if (!html) return [];
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    var links = [];
+    doc.querySelectorAll('li > a[href^="/wiki/"]').forEach(function(a) {
+      var t = a.getAttribute('title') || a.textContent.trim();
+      if (t && !t.includes(':') && links.length < 8) links.push({ title: t });
+    });
+    return links;
+  } catch(e) { return []; }
+}
+
+async function tryFetchArticle(title, lang) {
+  var isDisamb = await isDisambiguation(title, lang);
+  if (isDisamb) return { disambiguation: true, title: title };
+  var wikiContent = await fetchWikiContent(title, lang);
+  if (!wikiContent || wikiContent.extract.length < 100) return null;
+  return { title: title, extract: wikiContent.extract, lastModified: wikiContent.lastModified, lang: lang };
+}
+
+async function searchOneTopic(topic, lang) {
+  var url = 'https://' + lang + '.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(topic) + '&format=json&origin=*&srlimit=5';
+  var res = await fetch(url);
+  var data = await res.json();
+  var results = (data.query && data.query.search) || [];
+  for (var i = 0; i < Math.min(results.length, 3); i++) {
+    var article = await tryFetchArticle(results[i].title, lang);
+    if (article) return article;
+  }
+  return null;
+}
+
+// ── LLM calls ────────────────────────────────────────────────────────────────
+async function llmCall(sys, user, maxTok, tries) {
+  tries = tries || 0;
+  try {
+    var res = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: sys }] },
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: maxTok || 60 }
+      })
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || '';
+  } catch(e) {
+    if (tries < 2) { await new Promise(function(r) { setTimeout(r, 1000 * (tries + 1)); }); return llmCall(sys, user, maxTok, tries + 1); }
+    throw e;
+  }
+}
+
+async function identifyTopics(question, lang) {
+  var sys = 'You identify Wikipedia search terms. Respond only with terms separated by |. No explanations.';
+  var prompt = lang === 'es'
+    ? 'T\u00e9rminos de b\u00fasqueda Wikipedia para esta pregunta. Usa el t\u00e9rmino m\u00e1s espec\u00edfico (ej: "mercurio planeta" -> "Mercurio (planeta)"). Si necesita varios devolv\u00e9 hasta 3 separados por |. Solo los t\u00e9rminos: ' + question
+    : 'Wikipedia search terms for this question. Use most specific term (e.g. "mercury planet" -> "Mercury (planet)"). If multiple needed return up to 3 separated by |. Only the terms: ' + question;
+  try {
+    var raw = await llmCall(sys, prompt, 60);
+    return raw.split('|').map(function(t) { return t.trim(); }).filter(function(t) { return t.length > 0; }).slice(0, 3);
+  } catch(e) { return [question]; }
+}
+
+async function filterRelevantRefs(answer, refs, lang) {
+  if (!refs.length) return [];
+  var refTexts = refs.map(function(r, i) { return (i + 1) + '. ' + (r.text || r.url || '').slice(0, 120); }).join('\n');
+  var sys = 'You identify relevant references. Respond only with comma-separated numbers or "none".';
+  var prompt = lang === 'es'
+    ? 'Referencias que respaldan informaci\u00f3n en la respuesta. Solo n\u00fameros separados por coma o "ninguna".\n\nRespuesta:\n' + answer.slice(0, 600) + '\n\nReferencias:\n' + refTexts
+    : 'References that support information in the answer. Only comma-separated numbers or "none".\n\nAnswer:\n' + answer.slice(0, 600) + '\n\nReferences:\n' + refTexts;
+  try {
+    var raw = await llmCall(sys, prompt, 60);
+    if (raw.trim() === 'ninguna' || raw.trim() === 'none' || !raw.trim()) return [];
+    var indices = raw.split(',').map(function(n) { return parseInt(n.trim()) - 1; }).filter(function(n) { return !isNaN(n) && n >= 0 && n < refs.length; });
+    return indices.map(function(i) { return refs[i]; });
+  } catch(e) { return refs.slice(0, 5); }
+}
+
+async function checkHallucination(answer, extractsCombined, lang) {
+  var sys = 'You verify if an answer contains info not in the source. Respond only "yes" or "no".';
+  var prompt = lang === 'es'
+    ? 'La respuesta contiene info que NO aparece en los textos fuente? Solo "si" o "no".\n\nFuentes:\n' + extractsCombined.slice(0, 1500) + '\n\nRespuesta:\n' + answer.slice(0, 600)
+    : 'Does the answer contain info NOT in the source texts? Only "yes" or "no".\n\nSources:\n' + extractsCombined.slice(0, 1500) + '\n\nAnswer:\n' + answer.slice(0, 600);
+  try {
+    var raw = (await llmCall(sys, prompt, 10)).trim().toLowerCase();
+    return raw === 'si' || raw === 'yes';
+  } catch(e) { return false; }
+}
+
+async function detectRecentEvent(question, lang) {
+  var sys = 'Detect if question is about a post-2024 event. Respond only yes or no.';
+  var prompt = lang === 'es' ? 'Pregunta sobre evento post-2024 que Wikipedia no tenga? Solo si o no: ' + question : 'Question about post-2024 event Wikipedia lacks? Only yes or no: ' + question;
+  try { var r = (await llmCall(sys, prompt, 5)).trim().toLowerCase(); return r === 'si' || r === 'yes'; } catch(e) { return false; }
+}
+
+function isNoInfoResponse(answer) {
+  var phrases = ['no aparece', 'no se menciona', 'no encontr', 'not appear', 'not mention', 'not found', 'no proporciona', 'does not provide'];
+  return phrases.some(function(p) { return answer.toLowerCase().includes(p); });
+}
+
+function isComparisonQuestion(q) {
+  return /\b(diferencia|diferencias|comparar|comparaci|versus|vs\.?|contra|entre .+ y |compare|comparison|difference|versus)\b/i.test(q);
+}
+
+async function askMain(question, articles, lang) {
+  var isSpanish = lang === 'es';
+  var sys = isSpanish
+    ? 'Respond\u00e9 EXCLUSIVAMENTE con informaci\u00f3n de los textos de Wikipedia provistos. Si us\u00e1s m\u00e1s de un art\u00edculo indic\u00e1 (Fuente: nombre). Cit\u00e1 fragmentos entre comillas. No inventes datos. Si la info no est\u00e1, dec\u00ed que no aparece.'
+    : 'Respond EXCLUSIVELY with information from the provided Wikipedia texts. If using more than one article indicate (Source: name). Quote fragments in quotation marks. Do not invent data. If info is absent, say so.';
+
+  var contextBlock = articles.map(function(a, i) {
+    return '[' + (i + 1) + '] ' + a.title + ':\n' + a.extract;
+  }).join('\n\n');
+
+  var recentHistory = conversationHistory.slice(-4);
+  var contents = [];
+  recentHistory.forEach(function(turn) {
+    var trimmed = turn.text.length > 400 ? turn.text.slice(0, 400) + '...' : turn.text;
+    contents.push({ role: turn.role === 'user' ? 'user' : 'model', parts: [{ text: trimmed }] });
+  });
+  var userPrompt = contextBlock + '\n\n---\n' + (isSpanish ? 'Pregunta: ' : 'Question: ') + question + '\n\n' + (isSpanish ? 'Respond\u00e9 usando SOLO la informaci\u00f3n de los textos.' : 'Answer using ONLY the information from the texts.');
+  contents.push({ role: 'user', parts: [{ text: userPrompt }] });
+
+  var attempt = async function(left) {
+    var res = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: sys }] },
+        contents: contents,
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
+      })
+    });
+    var data = await res.json();
+    if (data.error) {
+      if (left > 0) { await new Promise(function(r) { setTimeout(r, 1500); }); return attempt(left - 1); }
+      throw new Error(data.error.message);
+    }
+    return (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || (isSpanish ? 'No pude generar una respuesta.' : 'Could not generate a response.');
+  };
+  return attempt(2);
+}
+
+async function askComparison(question, articles, lang) {
+  var isSpanish = lang === 'es';
+  var ctx = articles.map(function(a, i) { return '[' + (i + 1) + '] ' + a.title + ': ' + a.extract.slice(0, 6000); }).join(' ||| ');
+  var sys = isSpanish ? 'Produce comparaciones en JSON. Responde SOLO con JSON valido sin markdown ni texto extra.' : 'Produce comparisons in JSON. Respond ONLY with valid JSON, no markdown or extra text.';
+  var fmt = '{"subjects":["A","B"],"rows":[{"aspect":"X","values":["val A","val B"]}],"summary":"resumen"}';
+  var userPrompt = isSpanish
+    ? 'Textos: ' + ctx + ' --- Comparar: ' + question + ' --- Devuelve SOLO este JSON: ' + fmt
+    : 'Texts: ' + ctx + ' --- Compare: ' + question + ' --- Return ONLY this JSON: ' + fmt;
+  var raw = await llmCall(sys, userPrompt, 2000);
+  raw = raw.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim();
+  return JSON.parse(raw);
+}
+
+// ── Disambiguation flow ───────────────────────────────────────────────────────
+var pendingQuestion = null;
+var pendingLang = null;
+
+async function handleArticleChoice(chosenTitle, lang) {
+  addTyping();
+  try {
+    var wikiContent = await fetchWikiContent(chosenTitle, lang);
+    if (!wikiContent) { addError(lang === 'es' ? 'No pude cargar ese art\u00edculo.' : 'Could not load that article.'); return; }
+    var article = { title: chosenTitle, extract: wikiContent.extract, lastModified: wikiContent.lastModified, lang: lang };
+    var answer = await askMain(pendingQuestion, [article], lang);
+    var refs = [];
+    try { refs = await fetchWikiReferences(chosenTitle, lang); } catch(e) {}
+    var filteredRefs = [];
+    try { filteredRefs = await filterRelevantRefs(answer, refs, lang); } catch(e) { filteredRefs = refs.slice(0, 5); }
+    removeTyping();
+    addMessage('bot', answer);
+    addArticleStats([article], lang);
+    addSourceCard(article, filteredRefs, lang);
+    addCopyButton(answer, lang);
+    addNewChatButton(lang);
+    conversationHistory.push({ role: 'bot', text: answer });
+  } catch(e) {
+    removeTyping();
+    addError(lang === 'es' ? 'Error al cargar el art\u00edculo.' : 'Error loading article.');
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+function buildNoResultsMsg(query, lang) {
+  return lang === 'es'
+    ? 'No encontr\u00e9 informaci\u00f3n en Wikipedia sobre "' + query + '".\n\nEsto puede pasar cuando el tema es muy reciente, muy espec\u00edfico, o es una pregunta de opini\u00f3n.\n\nProb\u00e1 con otras palabras o un t\u00e9rmino m\u00e1s general.'
+    : 'I couldn\'t find information on Wikipedia about "' + query + '".\n\nThis can happen when the topic is very recent, too specific, or opinion-based.\n\nTry rephrasing or using a more general term.';
+}
+
+async function sendMessage() {
+  var text = input.value.trim();
+  if (!text || sendBtn.disabled) return;
+  input.value = '';
+  input.style.height = 'auto';
+  sendBtn.disabled = true;
+  addMessage('user', text);
+  conversationHistory.push({ role: 'user', text: text });
+  addTyping();
+  var lang = detectLang(text);
+  pendingQuestion = text;
+  pendingLang = lang;
+
+  try {
+    var topics = await identifyTopics(text, lang).catch(function() { return [text]; });
+    var articleResults = [];
+    for (var i = 0; i < topics.length; i++) {
+      var result = await searchOneTopic(topics[i], lang).catch(function() { return null; });
+      if (result) articleResults.push(result);
+    }
+
+    if (!articleResults.length) {
+      removeTyping();
+      addError(buildNoResultsMsg(text, lang));
+      conversationHistory.push({ role: 'bot', text: '[sin resultado]' });
+      return;
+    }
+
+    // Disambiguation
+    var disambig = articleResults.find(function(a) { return a.disambiguation; });
+    if (disambig) {
+      var options = await getDisambiguationOptions(disambig.title, lang).catch(function() { return []; });
+      addDisambiguation(disambig.title, options, lang);
+      return;
+    }
+
+    // Comparison or normal answer
+    var answer = '';
+    var isComparison = isComparisonQuestion(text) && articleResults.length >= 2;
+    if (isComparison) {
+      try {
+        var compData = await askComparison(text, articleResults, lang);
+        removeTyping();
+        renderComparisonTable(compData, lang);
+        answer = compData.summary || '';
+      } catch(e) {
+        isComparison = false;
+        answer = await askMain(text, articleResults, lang);
+      }
+    } else {
+      answer = await askMain(text, articleResults, lang);
+    }
+
+    // Post-processing (all non-blocking)
+    var refsArrays = [];
+    try { refsArrays = await Promise.all(articleResults.map(function(a) { return fetchWikiReferences(a.title, a.lang).catch(function() { return []; }); })); } catch(e) { refsArrays = articleResults.map(function() { return []; }); }
+    var filteredRefsArrays = refsArrays.map(function(r) { return r.slice(0, 5); });
+    try { filteredRefsArrays = await Promise.all(refsArrays.map(function(refs) { return filterRelevantRefs(answer, refs, lang).catch(function() { return refs.slice(0, 5); }); })); } catch(e) {}
+    var hallucination = false;
+    try { var extr = articleResults.map(function(a) { return a.extract; }).join('\n\n'); hallucination = await checkHallucination(answer, extr, lang); } catch(e) {}
+    var isRecent = false;
+    try { isRecent = await detectRecentEvent(text, lang); } catch(e) {}
+
+    if (!isComparison) {
+      removeTyping();
+      addMessage('bot', answer);
+    }
+
+    // Warnings
+    if (hallucination) {
+      var warnDiv = document.createElement('div');
+      warnDiv.className = 'message bot';
+      var wl = document.createElement('div'); wl.className = 'msg-label'; wl.textContent = 'WikiBot';
+      var wb = document.createElement('div');
+      wb.style.cssText = 'background:rgba(180,60,60,0.1);border:1px solid rgba(180,60,60,0.3);border-radius:8px;padding:8px 12px;font-size:12px;color:#e07070;max-width:88%;';
+      wb.textContent = lang === 'es' ? '\u26a0\ufe0f Parte de la respuesta puede no estar directamente respaldada por Wikipedia. Verific\u00e1 en el art\u00edculo original.' : '\u26a0\ufe0f Part of the response may not be directly supported by Wikipedia. Verify in the original article.';
+      warnDiv.appendChild(wl); warnDiv.appendChild(wb); chat.appendChild(warnDiv);
+    }
+    if (isRecent) {
+      var recentDiv = document.createElement('div');
+      recentDiv.className = 'message bot';
+      var rl = document.createElement('div'); rl.className = 'msg-label'; rl.textContent = 'WikiBot';
+      var rb = document.createElement('div');
+      rb.style.cssText = 'background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--accent);max-width:88%;';
+      rb.textContent = lang === 'es' ? '[!] Esta pregunta puede ser sobre un evento muy reciente. Wikipedia podr\u00eda no tener informaci\u00f3n actualizada.' : '[!] This question may be about a very recent event. Wikipedia may not have up-to-date information.';
+      recentDiv.appendChild(rl); recentDiv.appendChild(rb); chat.appendChild(recentDiv);
+    }
+    if (isNoInfoResponse(answer)) {
+      var guideDiv = document.createElement('div');
+      guideDiv.className = 'message bot';
+      var gl = document.createElement('div'); gl.className = 'msg-label'; gl.textContent = 'WikiBot';
+      var gb = document.createElement('div');
+      gb.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--text2);max-width:88%;';
+      gb.textContent = lang === 'es' ? 'Sugerencia: prob\u00e1 reformular con el nombre exacto del tema, o pregunt\u00e1 algo m\u00e1s general.' : 'Tip: try rephrasing with the exact topic name, or ask something more general.';
+      guideDiv.appendChild(gl); guideDiv.appendChild(gb); chat.appendChild(guideDiv);
+    }
+
+    addArticleStats(articleResults, lang);
+    for (var j = 0; j < articleResults.length; j++) {
+      addSourceCard(articleResults[j], filteredRefsArrays[j], articleResults[j].lang);
+    }
+    addCopyButton(answer, lang);
+    addNewChatButton(lang);
+    conversationHistory.push({ role: 'bot', text: answer });
+
+  } catch(err) {
+    removeTyping();
+    addError(lang === 'es' ? 'Hubo un error al procesar tu pregunta. Revis\u00e1 tu conexi\u00f3n e intent\u00e1 de nuevo.' : 'There was an error. Check your connection and try again.');
+    console.error(err);
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+</script>
+</body>
+</html>
